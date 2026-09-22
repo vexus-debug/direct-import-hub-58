@@ -109,6 +109,18 @@ export default function PatientProfilePage() {
   const [docForm, setDocForm] = useState({ title: "", category: "other", notes: "" });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedDocFile, setSelectedDocFile] = useState<File | null>(null);
+  // Tab persisted in the URL (?tab=documents) so a reload or the mobile
+  // file-picker lifecycle can't bounce the user back to Overview.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "overview";
+  const setActiveTab = (tab: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab === "overview") next.delete("tab");
+      else next.set("tab", tab);
+      return next;
+    }, { replace: true });
+  };
 
   const canViewClinical = roles.some(r => ["admin", "dentist", "hygienist"].includes(r)) || ["owner", "admin", "dentist", "hygienist"].includes(orgRole);
   const canEditClinical = roles.some(r => ["admin", "dentist", "hygienist"].includes(r)) || ["owner", "admin", "dentist", "hygienist"].includes(orgRole);
