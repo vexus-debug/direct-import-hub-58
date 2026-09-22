@@ -1,5 +1,5 @@
 import { PatientImageThumb } from "@/components/dashboard/PatientImageThumb";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -109,6 +109,18 @@ export default function PatientProfilePage() {
   const [docForm, setDocForm] = useState({ title: "", category: "other", notes: "" });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedDocFile, setSelectedDocFile] = useState<File | null>(null);
+  // Tab persisted in the URL (?tab=documents) so a reload or the mobile
+  // file-picker lifecycle can't bounce the user back to Overview.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "overview";
+  const setActiveTab = (tab: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab === "overview") next.delete("tab");
+      else next.set("tab", tab);
+      return next;
+    }, { replace: true });
+  };
 
   const canViewClinical = roles.some(r => ["admin", "dentist", "hygienist"].includes(r)) || ["owner", "admin", "dentist", "hygienist"].includes(orgRole);
   const canEditClinical = roles.some(r => ["admin", "dentist", "hygienist"].includes(r)) || ["owner", "admin", "dentist", "hygienist"].includes(orgRole);
@@ -188,7 +200,7 @@ export default function PatientProfilePage() {
         )}
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap h-auto gap-1" data-tour="patients-detail-tabs">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="history">{terms.historyTab}</TabsTrigger>
@@ -773,7 +785,7 @@ export default function PatientProfilePage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Upload Patient Document</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1"><Label className="text-xs">File *</Label><Input type="file" onChange={e => setSelectedDocFile(e.target.files?.[0] || null)} /></div>
+            <div className="space-y-1"><Label className="text-xs">File *</Label><Input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,application/pdf,image/*" onChange={e => setSelectedDocFile(e.target.files?.[0] || null)} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1"><Label className="text-xs">Title *</Label><Input value={docForm.title} onChange={e => setDocForm(f => ({ ...f, title: e.target.value }))} /></div>
               <div className="space-y-1">
@@ -795,7 +807,8 @@ export default function PatientProfilePage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDocDialogOpen(false)}>Cancel</Button>
-            <Button className="bg-secondary hover:bg-secondary/90" disabled={uploadDoc.isPending || !selectedDocFile || !docForm.title} onClick={() => {
+            <Button type="button" className="bg-secondary hover:bg-secondary/90" disabled={uploadDoc.isPending || !selectedDocFile || !docForm.title} onClick={(e) => {
+              e.preventDefault();
               if (!selectedDocFile || !patientId) return;
               uploadDoc.mutate({ file: selectedDocFile, patientId, title: docForm.title, category: docForm.category, notes: docForm.notes, userId: user?.id }, {
                 onSuccess: () => { setDocDialogOpen(false); setSelectedDocFile(null); setDocForm({ title: "", category: "other", notes: "" }); },
