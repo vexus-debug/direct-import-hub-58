@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,10 +22,19 @@ export default function DocumentsPage() {
   const deleteDoc = useDeleteClinicDocument();
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ title: "", category: "other", expiryDate: "", notes: "" });
   const fileRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const dialogOpen = searchParams.get("action") === "upload";
+  const setDialogOpen = (open: boolean) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (open) next.set("action", "upload");
+      else next.delete("action");
+      return next;
+    }, { replace: true });
+  };
 
   const filtered = documents.filter((d: any) => {
     const matchSearch = d.title.toLowerCase().includes(search.toLowerCase());
@@ -38,7 +48,8 @@ export default function DocumentsPage() {
     return diff > 0 && diff < 30 * 24 * 60 * 60 * 1000;
   });
 
-  const handleUpload = () => {
+  const handleUpload = (event?: React.MouseEvent<HTMLButtonElement>) => {
+    event?.preventDefault();
     if (!selectedFile || !form.title) return;
     uploadDoc.mutate({
       file: selectedFile,
@@ -58,8 +69,8 @@ export default function DocumentsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Documents" description="Manage clinic licenses, certificates, and policies">
-        <Button onClick={() => setDialogOpen(true)} className="bg-secondary hover:bg-secondary/90" data-tour="documents-upload">
+       <PageHeader title="Documents" description="Manage clinic licenses, certificates, and policies">
+        <Button type="button" onClick={(e) => { e.preventDefault(); setDialogOpen(true); }} className="bg-secondary hover:bg-secondary/90" data-tour="documents-upload">
           <Upload className="mr-2 h-4 w-4" /> Upload Document
         </Button>
       </PageHeader>
@@ -125,7 +136,7 @@ export default function DocumentsPage() {
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">File *</Label>
-              <Input ref={fileRef} type="file" onChange={e => setSelectedFile(e.target.files?.[0] || null)} />
+               <Input ref={fileRef} type="file" accept="application/pdf,image/png,image/jpeg" onChange={e => setSelectedFile(e.target.files?.[0] || null)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1"><Label className="text-xs">Title *</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
@@ -141,8 +152,8 @@ export default function DocumentsPage() {
             <div className="space-y-1"><Label className="text-xs">Notes</Label><Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleUpload} className="bg-secondary hover:bg-secondary/90" disabled={uploadDoc.isPending || !selectedFile}>
+            <Button type="button" variant="outline" onClick={(e) => { e.preventDefault(); setDialogOpen(false); }}>Cancel</Button>
+            <Button type="button" onClick={handleUpload} className="bg-secondary hover:bg-secondary/90" disabled={uploadDoc.isPending || !selectedFile}>
               {uploadDoc.isPending ? "Uploading..." : "Upload"}
             </Button>
           </DialogFooter>

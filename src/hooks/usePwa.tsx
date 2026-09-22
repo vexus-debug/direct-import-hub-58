@@ -54,7 +54,15 @@ async function unregisterAppSw() {
   const regs = await navigator.serviceWorker.getRegistrations();
   const removed = await Promise.all(
     regs
-      .filter((r) => (r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || "").endsWith(SW_URL))
+      .filter((r) => {
+        const scriptUrl = r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL;
+        if (!scriptUrl) return false;
+        try {
+          return new URL(scriptUrl).origin === window.location.origin && new URL(scriptUrl).pathname === SW_URL;
+        } catch {
+          return false;
+        }
+      })
       .map((r) => r.unregister().catch(() => false)),
   );
   const hadSw = removed.some(Boolean);
@@ -141,7 +149,6 @@ export function PwaProvider({ children }: { children: ReactNode }) {
   const applyUpdate = useCallback(() => {
     setNeedRefresh(false);
     if (updateRef.current) void updateRef.current(true);
-    else window.location.reload();
   }, []);
 
   return (

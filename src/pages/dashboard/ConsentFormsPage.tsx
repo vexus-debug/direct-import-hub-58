@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +56,6 @@ export default function ConsentFormsPage() {
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [signDialogOpen, setSignDialogOpen] = useState(false);
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedFormId, setSelectedFormId] = useState("");
   const [signerName, setSignerName] = useState("");
   const [uploadPatientId, setUploadPatientId] = useState("");
@@ -69,6 +69,16 @@ export default function ConsentFormsPage() {
   const [importKeys, setImportKeys] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const uploadDialogOpen = searchParams.get("action") === "upload-scanned-consent";
+  const setUploadDialogOpen = (open: boolean) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (open) next.set("action", "upload-scanned-consent");
+      else next.delete("action");
+      return next;
+    }, { replace: true });
+  };
 
   const existingTitles = new Set(templates.map((t: any) => (t.title || "").toLowerCase()));
 
@@ -176,7 +186,8 @@ export default function ConsentFormsPage() {
     });
   };
 
-  const handleUploadScanned = () => {
+  const handleUploadScanned = (event?: React.MouseEvent<HTMLButtonElement>) => {
+    event?.preventDefault();
     if (!uploadFile || !uploadPatientId || !uploadTitle) return;
     uploadDoc.mutate({
       file: uploadFile,
@@ -204,7 +215,7 @@ export default function ConsentFormsPage() {
     <div className="space-y-6">
       <PageHeader title="Consent Forms" description="Manage consent form templates and patient consents">
         <div className="flex gap-2 flex-wrap" data-tour="consent-forms-actions">
-          <Button variant="outline" size="sm" onClick={() => setUploadDialogOpen(true)}>
+          <Button type="button" variant="outline" size="sm" onClick={(e) => { e.preventDefault(); setUploadDialogOpen(true); }}>
             <Upload className="mr-2 h-4 w-4" /> Upload Scanned
           </Button>
           {isAdmin && (
@@ -395,21 +406,21 @@ export default function ConsentFormsPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Scanned Document / Photo *</Label>
-              <Input type="file" accept="image/*,.pdf,.doc,.docx" onChange={e => setUploadFile(e.target.files?.[0] || null)} />
+              <Input type="file" accept="application/pdf,image/png,image/jpeg" onChange={e => setUploadFile(e.target.files?.[0] || null)} />
               <p className="text-[11px] text-muted-foreground">
                 For an image, you can also extract the text into a reusable template with "Scan to Template".
               </p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={(e) => { e.preventDefault(); setUploadDialogOpen(false); }}>Cancel</Button>
             {isAdmin && (
-              <Button variant="outline" onClick={handleScanToTemplate} disabled={scanning || !uploadFile}>
+              <Button type="button" variant="outline" onClick={(e) => { e.preventDefault(); void handleScanToTemplate(); }} disabled={scanning || !uploadFile}>
                 {scanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ScanLine className="mr-2 h-4 w-4" />}
                 {scanning ? "Scanning..." : "Scan to Template"}
               </Button>
             )}
-            <Button onClick={handleUploadScanned} className="bg-secondary hover:bg-secondary/90" disabled={uploadDoc.isPending || !uploadFile || !uploadPatientId || !uploadTitle}>
+            <Button type="button" onClick={handleUploadScanned} className="bg-secondary hover:bg-secondary/90" disabled={uploadDoc.isPending || !uploadFile || !uploadPatientId || !uploadTitle}>
               {uploadDoc.isPending ? "Uploading..." : "Upload"}
             </Button>
           </DialogFooter>

@@ -1,6 +1,6 @@
 import { PatientImageThumb } from "@/components/dashboard/PatientImageThumb";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -98,8 +98,6 @@ export default function PatientProfilePage() {
   const [prescriptionOpen, setPrescriptionOpen] = useState(false);
   const [labCaseOpen, setLabCaseOpen] = useState(false);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
-  const [imageDialogOpen, setImageDialogOpen] = useState(false);
-  const [docDialogOpen, setDocDialogOpen] = useState(false);
   const [noteForm, setNoteForm] = useState({ subjective: "", objective: "", assessment: "", plan: "" });
   const [imageForm, setImageForm] = useState(() => ({
     imageType: getClinicTerms(currentOrg?.clinic_type).defaultImageType,
@@ -118,6 +116,21 @@ export default function PatientProfilePage() {
       const next = new URLSearchParams(prev);
       if (tab === "overview") next.delete("tab");
       else next.set("tab", tab);
+      return next;
+    }, { replace: true });
+  };
+  const uploadAction = searchParams.get("action");
+  const imageDialogOpen = uploadAction === "upload-image";
+  const docDialogOpen = uploadAction === "upload-document";
+  const setUploadAction = (action: "upload-image" | "upload-document" | null) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (action) {
+        next.set("action", action);
+        next.set("tab", action === "upload-document" ? "documents" : "images");
+      } else {
+        next.delete("action");
+      }
       return next;
     }, { replace: true });
   };
@@ -610,7 +623,7 @@ export default function PatientProfilePage() {
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-medium">X-Rays & Photos</h3>
               {canEditClinical && (
-                <Button size="sm" variant="outline" onClick={() => setImageDialogOpen(true)}>
+                <Button type="button" size="sm" variant="outline" onClick={(e) => { e.preventDefault(); setUploadAction("upload-image"); }}>
                   <Camera className="mr-1 h-3 w-3" /> Upload Image
                 </Button>
               )}
@@ -666,7 +679,7 @@ export default function PatientProfilePage() {
         <TabsContent value="documents" className="mt-4 space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-sm font-medium">Patient Documents</h3>
-            <Button size="sm" variant="outline" onClick={() => setDocDialogOpen(true)}>
+            <Button type="button" size="sm" variant="outline" onClick={(e) => { e.preventDefault(); setUploadAction("upload-document"); }}>
               <Upload className="mr-1 h-3 w-3" /> Upload
             </Button>
           </div>
@@ -745,7 +758,7 @@ export default function PatientProfilePage() {
       </Dialog>
 
       {/* Image Upload Dialog - with supporting note */}
-      <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+      <Dialog open={imageDialogOpen} onOpenChange={(open) => setUploadAction(open ? "upload-image" : null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Upload Patient Image</DialogTitle></DialogHeader>
           <div className="space-y-3">
@@ -769,11 +782,12 @@ export default function PatientProfilePage() {
             <div className="space-y-1"><Label className="text-xs">Supporting Note / Description</Label><Textarea value={imageForm.description} onChange={e => setImageForm(f => ({ ...f, description: e.target.value }))} rows={2} placeholder="Describe findings, context for this image..." /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setImageDialogOpen(false)}>Cancel</Button>
-            <Button className="bg-secondary hover:bg-secondary/90" disabled={uploadImage.isPending || !selectedFile} onClick={() => {
+            <Button type="button" variant="outline" onClick={(e) => { e.preventDefault(); setUploadAction(null); }}>Cancel</Button>
+            <Button type="button" className="bg-secondary hover:bg-secondary/90" disabled={uploadImage.isPending || !selectedFile} onClick={(e) => {
+              e.preventDefault();
               if (!selectedFile || !patientId) return;
               uploadImage.mutate({ file: selectedFile, patientId, imageType: imageForm.imageType, toothNumber: imageForm.toothNumber ? Number(imageForm.toothNumber) : undefined, description: imageForm.description, userId: user?.id }, {
-                onSuccess: () => { setImageDialogOpen(false); setSelectedFile(null); setImageForm({ imageType: terms.defaultImageType, toothNumber: "", description: "" }); },
+                onSuccess: () => { setUploadAction(null); setSelectedFile(null); setImageForm({ imageType: terms.defaultImageType, toothNumber: "", description: "" }); },
               });
             }}>{uploadImage.isPending ? "Uploading..." : "Upload"}</Button>
           </DialogFooter>
@@ -781,11 +795,11 @@ export default function PatientProfilePage() {
       </Dialog>
 
       {/* Document Upload Dialog */}
-      <Dialog open={docDialogOpen} onOpenChange={setDocDialogOpen}>
+      <Dialog open={docDialogOpen} onOpenChange={(open) => setUploadAction(open ? "upload-document" : null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Upload Patient Document</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1"><Label className="text-xs">File *</Label><Input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,application/pdf,image/*" onChange={e => setSelectedDocFile(e.target.files?.[0] || null)} /></div>
+            <div className="space-y-1"><Label className="text-xs">File *</Label><Input type="file" accept="application/pdf,image/png,image/jpeg" onChange={e => setSelectedDocFile(e.target.files?.[0] || null)} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1"><Label className="text-xs">Title *</Label><Input value={docForm.title} onChange={e => setDocForm(f => ({ ...f, title: e.target.value }))} /></div>
               <div className="space-y-1">
@@ -806,12 +820,12 @@ export default function PatientProfilePage() {
             <div className="space-y-1"><Label className="text-xs">Notes</Label><Input value={docForm.notes} onChange={e => setDocForm(f => ({ ...f, notes: e.target.value }))} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDocDialogOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={(e) => { e.preventDefault(); setUploadAction(null); }}>Cancel</Button>
             <Button type="button" className="bg-secondary hover:bg-secondary/90" disabled={uploadDoc.isPending || !selectedDocFile || !docForm.title} onClick={(e) => {
               e.preventDefault();
               if (!selectedDocFile || !patientId) return;
               uploadDoc.mutate({ file: selectedDocFile, patientId, title: docForm.title, category: docForm.category, notes: docForm.notes, userId: user?.id }, {
-                onSuccess: () => { setDocDialogOpen(false); setSelectedDocFile(null); setDocForm({ title: "", category: "other", notes: "" }); },
+                onSuccess: () => { setUploadAction(null); setSelectedDocFile(null); setDocForm({ title: "", category: "other", notes: "" }); },
               });
             }}>{uploadDoc.isPending ? "Uploading..." : "Upload"}</Button>
           </DialogFooter>
