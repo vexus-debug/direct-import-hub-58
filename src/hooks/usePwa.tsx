@@ -60,18 +60,13 @@ async function unregisterAppSw() {
   const hadSw = removed.some(Boolean);
   if (!hadSw) return;
 
-  // A stale service worker was controlling this page: purge its caches and
-  // reload once so the page is served straight from the network.
+  // A stale service worker was controlling this page: purge its caches so
+  // future requests go straight to the network. Never force a reload here —
+  // it can fire while the user is in the middle of something (e.g. the
+  // mobile file picker) and would lose their place.
   if ("caches" in window) {
     const keys = await caches.keys();
     await Promise.allSettled(keys.filter((k) => k.startsWith("clinexus-") || k.startsWith("workbox-")).map((k) => caches.delete(k)));
-  }
-  if (navigator.serviceWorker.controller) {
-    const key = "clinexus-sw-purge-reload";
-    if (!sessionStorage.getItem(key)) {
-      sessionStorage.setItem(key, "1");
-      window.location.reload();
-    }
   }
 }
 
