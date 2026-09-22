@@ -807,7 +807,8 @@ export default function PatientProfilePage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDocDialogOpen(false)}>Cancel</Button>
-            <Button className="bg-secondary hover:bg-secondary/90" disabled={uploadDoc.isPending || !selectedDocFile || !docForm.title} onClick={() => {
+            <Button type="button" className="bg-secondary hover:bg-secondary/90" disabled={uploadDoc.isPending || !selectedDocFile || !docForm.title} onClick={(e) => {
+              e.preventDefault();
               if (!selectedDocFile || !patientId) return;
               uploadDoc.mutate({ file: selectedDocFile, patientId, title: docForm.title, category: docForm.category, notes: docForm.notes, userId: user?.id }, {
                 onSuccess: () => { setDocDialogOpen(false); setSelectedDocFile(null); setDocForm({ title: "", category: "other", notes: "" }); },
